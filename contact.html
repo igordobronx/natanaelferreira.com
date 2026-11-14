@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Booking and contact | Natanael Ferreira, viola</title>
+<meta name="description" content="Book violist Natanael Ferreira for concerts, festivals and residencies. Direct contact for agents, festivals and press.">
+<meta name="theme-color" content="#1C1815">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..500;1,9..144,300..400&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="site-head">
+  <a class="brand" href="index.html">Natanael Ferreira</a>
+  <button class="menu-btn" aria-expanded="false" aria-controls="nav">Menu</button>
+  <nav id="nav" aria-label="Main">
+    <a href="bio.html">Bio</a>
+    <a href="agenda.html">Agenda</a>
+    <a href="media.html">Media</a>
+    <a class="nav-cta" href="contact.html" aria-current="page">Booking</a>
+  </nav>
+</header>
+
+<main>
+  <div class="page-head"><div class="wrap">
+    <h1>Booking</h1>
+    <p>Available for concerts, festivals and residencies worldwide. Enquiries from agents, festivals and press go straight to Natanael.</p>
+  </div></div>
+
+  <section class="band light">
+    <div class="wrap split">
+      <div>
+        <h2>Write directly</h2>
+        <p style="margin:20px 0 28px"><a class="link lede" href="mailto:natanaelviola@gmail.com" style="overflow-wrap:anywhere">natanaelviola@gmail.com</a></p>
+        <ul class="cred-list" style="margin-top:0">
+          <li><h3>Concerts and festivals</h3><p class="muted">Solo, concerto and chamber music engagements</p></li>
+          <li><h3>Residencies</h3><p class="muted">Artist residencies and academies</p></li>
+          <li><h3>Press</h3><p class="muted">Interviews, biography and photographs</p></li>
+        </ul>
+        <figure style="margin-top:36px">
+          <img src="assets/img/stage-closeup.jpg" alt="Natanael Ferreira playing viola under warm stage light" width="721" height="552" loading="lazy">
+        </figure>
+      </div>
+
+      <form data-booking-form action="mailto:natanaelviola@gmail.com" method="post" enctype="text/plain">
+        <h2>Send an enquiry</h2>
+        <label>Your name <input name="name" autocomplete="name" required></label>
+        <label>Organisation, festival or agency <input name="organisation" autocomplete="organization"></label>
+        <label>Email for the reply <input name="email" type="email" autocomplete="email" required></label>
+        <label>Type of enquiry
+          <select name="type">
+            <option>Booking</option>
+            <option>Festival</option>
+            <option>Residency</option>
+            <option>Press</option>
+          </select>
+        </label>
+        <label>Proposed dates and venue <input name="dates" placeholder="e.g. July 2027, chamber series"></label>
+        <label>Message <textarea name="message" required></textarea></label>
+        <button class="btn" type="submit">Send enquiry</button>
+        <p class="form-note">This opens your email app with the enquiry filled in, addressed to natanaelviola@gmail.com. Press send there to deliver it.</p>
+      </form>
+    </div>
+  </section>
+</main>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <p class="foot-name">Natanael Ferreira</p>
+    <ul>
+      <li><a class="link" href="https://www.instagram.com/natanael_ferreira.violist/" rel="noopener">Instagram</a></li>
+      <li><a class="link" href="https://open.spotify.com/artist/4PsltwLkKlP4t1jMOGDaY6" rel="noopener">Spotify</a></li>
+      <li><a class="link" href="https://www.youtube.com/@natanaelviola" rel="noopener">YouTube</a></li>
+    </ul>
+    <a href="mailto:natanaelviola@gmail.com">natanaelviola@gmail.com</a>
+    <small>© 2026 Natanael Ferreira</small>
+  </div>
+</footer>
+
+<script src="js/main.js" defer></script>
+</body>
+</html>
