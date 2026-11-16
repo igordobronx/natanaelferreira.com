@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>graphify - graphify-out/graph.html</title>
+<script src="https://unpkg.com/vis-network@9.1.6/standalone/umd/vis-network.min.js"
+        integrity="sha384-Ux6phic9PEHJ38YtrijhkzyJ8yQlH8i/+buBR8s3mAZOJrP1gwyvAcIYl3GWtpX1"
+        crossorigin="anonymous"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0f0f1a; color: #e0e0e0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; display: flex; height: 100vh; overflow: hidden; }
+  #graph { flex: 1; }
+  #sidebar { width: 280px; background: #1a1a2e; border-left: 1px solid #2a2a4e; display: flex; flex-direction: column; overflow: hidden; }
+  #search-wrap { padding: 12px; border-bottom: 1px solid #2a2a4e; }
+  #search { width: 100%; background: #0f0f1a; border: 1px solid #3a3a5e; color: #e0e0e0; padding: 7px 10px; border-radius: 6px; font-size: 13px; outline: none; }
+  #search:focus { border-color: #4E79A7; }
+  #search-results { max-height: 140px; overflow-y: auto; padding: 4px 12px; border-bottom: 1px solid #2a2a4e; display: none; }
+  .search-item { padding: 4px 6px; cursor: pointer; border-radius: 4px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .search-item:hover { background: #2a2a4e; }
+  #info-panel { padding: 14px; border-bottom: 1px solid #2a2a4e; min-height: 140px; }
+  #info-panel h3 { font-size: 13px; color: #aaa; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
+  #info-content { font-size: 13px; color: #ccc; line-height: 1.6; }
+  #info-content .field { margin-bottom: 5px; }
+  #info-content .field b { color: #e0e0e0; }
+  #info-content .empty { color: #555; font-style: italic; }
+  .neighbor-link { display: block; padding: 2px 6px; margin: 2px 0; border-radius: 3px; cursor: pointer; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-left: 3px solid #333; }
+  .neighbor-link:hover { background: #2a2a4e; }
+  #neighbors-list { max-height: 160px; overflow-y: auto; margin-top: 4px; }
+  #legend-wrap { flex: 1; overflow-y: auto; padding: 12px; }
+  #legend-wrap h3 { font-size: 13px; color: #aaa; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .legend-item { display: flex; align-items: center; gap: 8px; padding: 4px 0; cursor: pointer; border-radius: 4px; font-size: 12px; }
+  .legend-item:hover { background: #2a2a4e; padding-left: 4px; }
+  .legend-item.dimmed { opacity: 0.35; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+  .legend-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .legend-count { color: #666; font-size: 11px; }
+  #stats { padding: 10px 14px; border-top: 1px solid #2a2a4e; font-size: 11px; color: #555; }
+  #legend-controls { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 4px 0; }
+  #legend-controls label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12px; color: #aaa; user-select: none; }
+  #legend-controls label:hover { color: #e0e0e0; }
+  .legend-cb, #select-all-cb { appearance: none; -webkit-appearance: none; width: 14px; height: 14px; border: 1.5px solid #3a3a5e; border-radius: 3px; background: #0f0f1a; cursor: pointer; position: relative; flex-shrink: 0; }
+  .legend-cb:checked, #select-all-cb:checked { background: #4E79A7; border-color: #4E79A7; }
+  .legend-cb:checked::after, #select-all-cb:checked::after { content: ''; position: absolute; left: 3.5px; top: 1px; width: 4px; height: 7px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+  #select-all-cb:indeterminate { background: #4E79A7; border-color: #4E79A7; }
+  #select-all-cb:indeterminate::after { content: ''; position: absolute; left: 2px; top: 5px; width: 8px; height: 2px; background: #fff; border: none; transform: none; }
+</style>
+</head>
+<body>
+<div id="graph"></div>
+<div id="sidebar">
+  <div id="search-wrap">
+    <input id="search" type="text" placeholder="Search nodes..." autocomplete="off">
+    <div id="search-results"></div>
+  </div>
+  <div id="info-panel">
+    <h3>Node Info</h3>
+    <div id="info-content"><span class="empty">Click a node to inspect it</span></div>
+  </div>
+  <div id="legend-wrap">
+    <h3>Communities</h3>
+    <div id="legend-controls">
+      <label><input type="checkbox" id="select-all-cb" checked onchange="toggleAllCommunities(!this.checked)">Select All</label>
+    </div>
+    <div id="legend"></div>
+  </div>
+  <div id="stats">63 nodes &middot; 109 edges &middot; 13 communities</div>
+</div>
+<script>
+const RAW_NODES = [{"id": "js_main_el", "label": "el()", "color": {"background": "#EDC948", "border": "#EDC948", "highlight": {"background": "#ffffff", "border": "#EDC948"}}, "size": 12.3, "font": {"size": 0, "color": "#ffffff"}, "title": "el()", "community": 5, "community_name": "Codigo main.js", "source_file": "js/main.js", "file_type": "code", "degree": 1}, {"id": "js_main_concerts", "label": "CONCERTS", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 23.8, "font": {"size": 12, "color": "#ffffff"}, "title": "CONCERTS", "community": 0, "community_name": "Deploy e painel administrativo", "source_file": "js/main.js", "file_type": "code", "degree": 6}, {"id": "js_main_cities", "label": "CITIES", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 16.9, "font": {"size": 12, "color": "#ffffff"}, "title": "CITIES", "community": 10, "community_name": "Ticker de cidades", "source_file": "js/main.js", "file_type": "code", "degree": 3}, {"id": "js_main", "label": "main.js", "color": {"background": "#EDC948", "border": "#EDC948", "highlight": {"background": "#ffffff", "border": "#EDC948"}}, "size": 40.0, "font": {"size": 12, "color": "#ffffff"}, "title": "main.js", "community": 5, "community_name": "Codigo main.js", "source_file": "js/main.js", "file_type": "code", "degree": 13}, {"id": "js_main_head", "label": "head", "color": {"background": "#EDC948", "border": "#EDC948", "highlight": {"background": "#ffffff", "border": "#EDC948"}}, "size": 12.3, "font": {"size": 0, "color": "#ffffff"}, "title": "head", "community": 5, "community_name": "Codigo main.js", "source_file": "js/main.js", "file_type": "code", "degree": 1}, {"id": "js_main_menubtn", "label": "menuBtn", "color": {"background": "#EDC948", "border": "#EDC948", "highlight": {"background": "#ffffff", "border": "#EDC948"}}, "size": 12.3, "font": {"size": 0, "color": "#ffffff"}, "title": "menuBtn", "community": 5, "community_name": "Codigo main.js", "source_file": "js/main.js", "file_type": "code", "degree": 1}, {"id": "js_main_ticker", "label": "ticker", "color": {"background": "#EDC948", "border": "#EDC948", "highlight": {"background": "#ffffff", "border": "#EDC948"}}, "size": 12.3, "font": {"size": 0, "color": "#ffffff"}, "title": "ticker", "community": 5, "community_name": "Codigo main.js", "source_file": "js/main.js", "file_type": "code", "degree": 1}, {"id": "docs_proximos_passos_cms_github", "label": "Opcao 2: CMS em cima do GitHub (Decap ou Pages CMS)", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 14.6, "font": {"size": 12, "color": "#ffffff"}, "title": "Opcao 2: CMS em cima do GitHub (Decap ou Pages CMS)", "community": 0, "community_name": "Deploy e painel administrativo", "source_file": "docs/proximos-passos.md", "file_type": "concept", "degree": 2}, {"id": "docs_proximos_passos_datas_reais", "label": "Pendencia: datas reais de concertos", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 16.9, "font": {"size": 12, "color": "#ffffff"}, "title": "Pendencia: datas reais de concertos", "community": 0, "community_name": "Deploy e painel administrativo", "source_file": "docs/proximos-passos.md", "file_type": "concept", "degree": 3}, {"id": "docs_proximos_passos_dominio_wix", "label": "Pendencia: dominio natanaelferreira.com ainda aponta para o Wix", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 14.6, "font": {"size": 12, "color": "#ffffff"}, "title": "Pendencia: dominio natanaelferreira.com ainda aponta para o Wix", "community": 0, "community_name": "Deploy e painel administrativo", "source_file": "docs/proximos-passos.md", "file_type": "concept", "degree": 2}, {"id": "docs_proximos_passos_github_repo", "label": "Repositorio GitHub igordobronx/natanaelferreira.com (push na main publica)", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 16.9, "font": {"size": 12, "color": "#ffffff"}, "title": "Repositorio GitHub igordobronx/natanaelferreira.com (push na main publica)", "community": 0, "community_name": "Deploy e painel administrativo", "source_file": "docs/proximos-passos.md", "file_type": "concept", "degree": 3}, {"id": "docs_proximos_passos_painel_proprio", "label": "Opcao 3: painel proprio com banco de dados", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 14.6, "font": {"size": 12, "color": "#ffffff"}, "title": "Opcao 3: painel proprio com banco de dados", "community": 0, "community_name": "Deploy e painel administrativo", "source_file": "docs/proximos-passos.md", "file_type": "concept", "degree": 2}, {"id": "docs_proximos_passos_planilha_google", "label": "Opcao 1: planilha do Google como painel da agenda (recomendado)", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 14.6, "font": {"size": 12, "color": "#ffffff"}, "title": "Opcao 1: planilha do Google como painel da agenda (recomendado)", "community": 0, "community_name": "Deploy e painel administrativo", "source_file": "docs/proximos-passos.md", "file_type": "concept", "degree": 2}, {"id": "docs_proximos_passos_vercel_deploy", "label": "Deploy na Vercel: natanaelferreiracom.vercel.app", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 19.2, "font": {"size": 12, "color": "#ffffff"}, "title": "Deploy na Vercel: natanaelferreiracom.vercel.app", "community": 0, "community_name": "Deploy e painel administrativo", "source_file": "docs/proximos-passos.md", "file_type": "concept", "degree": 4}, {"id": "docs_proximos_passos_versoes_pt_fr", "label": "Pendencia: versoes PT e FR", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 12.3, "font": {"size": 0, "color": "#ffffff"}, "title": "Pendencia: versoes PT e FR", "community": 0, "community_name": "Deploy e painel administrativo", "source_file": "docs/proximos-passos.md", "file_type": "concept", "degree": 1}, {"id": "docs_proximos_passos_doc", "label": "Estado e proximos passos (14/11/2026)", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 35.4, "font": {"size": 12, "color": "#ffffff"}, "title": "Estado e proximos passos (14/11/2026)", "community": 0, "community_name": "Deploy e painel administrativo", "source_file": "docs/proximos-passos.md", "file_type": "document", "degree": 11}, {"id": "docs_proximos_passos_decisao_painel_administrativo", "label": "Decisao pendente: painel administrativo", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 23.8, "font": {"size": 12, "color": "#ffffff"}, "title": "Decisao pendente: painel administrativo", "community": 0, "community_name": "Deploy e painel administrativo", "source_file": "docs/proximos-passos.md", "file_type": "rationale", "degree": 6}, {"id": "docs_proximos_passos_fotos_alta_resolucao", "label": "Pendencia: fotos em alta resolucao (atuais ~700 px)", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 14.6, "font": {"size": 12, "color": "#ffffff"}, "title": "Pendencia: fotos em alta resolucao (atuais ~700 px)", "community": 1, "community_name": "Media e Moments on stage", "source_file": "docs/proximos-passos.md", "file_type": "concept", "degree": 2}, {"id": "index_moments_reel", "label": "Moments on stage (horizontal scroll-snap reel)", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 28.5, "font": {"size": 12, "color": "#ffffff"}, "title": "Moments on stage (horizontal scroll-snap reel)", "community": 1, "community_name": "Media e Moments on stage", "source_file": "index.html", "file_type": "concept", "degree": 8}, {"id": "media_photo_gallery", "label": "Photographs gallery (7 photos)", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 30.8, "font": {"size": 12, "color": "#ffffff"}, "title": "Photographs gallery (7 photos)", "community": 1, "community_name": "Media e Moments on stage", "source_file": "media.html", "file_type": "concept", "degree": 9}, {"id": "media_videos_section", "label": "Performances: two self-hosted videos (recital, ensemble)", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 23.8, "font": {"size": 12, "color": "#ffffff"}, "title": "Performances: two self-hosted videos (recital, ensemble)", "community": 1, "community_name": "Media e Moments on stage", "source_file": "media.html", "file_type": "concept", "degree": 6}, {"id": "media_page", "label": "Media page (media.html)", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 21.5, "font": {"size": 12, "color": "#ffffff"}, "title": "Media page (media.html)", "community": 1, "community_name": "Media e Moments on stage", "source_file": "media.html", "file_type": "document", "degree": 5}, {"id": "assets_img_backstage_conductor", "label": "Photo: backstage in concert dress with the conductor", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 14.6, "font": {"size": 12, "color": "#ffffff"}, "title": "Photo: backstage in concert dress with the conductor", "community": 1, "community_name": "Media e Moments on stage", "source_file": "assets/img/backstage-conductor.jpg", "file_type": "image", "degree": 2}, {"id": "assets_img_orchestra_applause", "label": "Photo: handshake with the conductor after a performance", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 14.6, "font": {"size": 12, "color": "#ffffff"}, "title": "Photo: handshake with the conductor after a performance", "community": 1, "community_name": "Media e Moments on stage", "source_file": "assets/img/orchestra-applause.jpg", "file_type": "image", "degree": 2}, {"id": "assets_img_poster_ensemble", "label": "Video poster: soloist with string ensemble", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 14.6, "font": {"size": 12, "color": "#ffffff"}, "title": "Video poster: soloist with string ensemble", "community": 1, "community_name": "Media e Moments on stage", "source_file": "assets/img/poster-ensemble.jpg", "file_type": "image", "degree": 2}, {"id": "assets_img_poster_recital", "label": "Video poster: recital with piano", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 14.6, "font": {"size": 12, "color": "#ffffff"}, "title": "Video poster: recital with piano", "community": 1, "community_name": "Media e Moments on stage", "source_file": "assets/img/poster-recital.jpg", "file_type": "image", "degree": 2}, {"id": "assets_img_stage_soloist", "label": "Photo: white shirt, playing beside the conductor podium", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 14.6, "font": {"size": 12, "color": "#ffffff"}, "title": "Photo: white shirt, playing beside the conductor podium", "community": 1, "community_name": "Media e Moments on stage", "source_file": "assets/img/stage-soloist.jpg", "file_type": "image", "degree": 2}, {"id": "docs_proximos_passos_cidades_reais", "label": "Pendencia: lista real de cidades do ticker", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 14.6, "font": {"size": 12, "color": "#ffffff"}, "title": "Pendencia: lista real de cidades do ticker", "community": 10, "community_name": "Ticker de cidades", "source_file": "docs/proximos-passos.md", "file_type": "concept", "degree": 2}, {"id": "index_ticker", "label": "Cities ticker", "color": {"background": "#4E79A7", "border": "#4E79A7", "highlight": {"background": "#ffffff", "border": "#4E79A7"}}, "size": 14.6, "font": {"size": 12, "color": "#ffffff"}, "title": "Cities ticker", "community": 10, "community_name": "Ticker de cidades", "source_file": "index.html", "file_type": "concept", "degree": 2}, {"id": "docs_proximos_passos_formspree_web3forms", "label": "Opcao: Formspree ou Web3Forms (recomendado)", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 16.9, "font": {"size": 12, "color": "#ffffff"}, "title": "Opcao: Formspree ou Web3Forms (recomendado)", "community": 11, "community_name": "Formulario de booking (decisao)", "source_file": "docs/proximos-passos.md", "file_type": "concept", "degree": 3}, {"id": "docs_proximos_passos_netlify_forms", "label": "Opcao: Netlify Forms (nao se aplica, site esta na Vercel)", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 14.6, "font": {"size": 12, "color": "#ffffff"}, "title": "Opcao: Netlify Forms (nao se aplica, site esta na Vercel)", "community": 11, "community_name": "Formulario de booking (decisao)", "source_file": "docs/proximos-passos.md", "file_type": "concept", "degree": 2}, {"id": "docs_proximos_passos_decisao_formulario_booking", "label": "Decisao pendente: formulario de booking", "color": {"background": "#F28E2B", "border": "#F28E2B", "highlight": {"background": "#ffffff", "border": "#F28E2B"}}, "size": 19.2, "font": {"size": 12, "color": "#ffffff"}, "title": "Decisao pendente: formulario de booking", "community": 11, "community_name": "Formulario de booking (decisao)", "source_file": "docs/proximos-passos.md", "file_type": "rationale", "degree": 4}, {"id": "bio_page", "label": "Biography page (bio.html)", "color": {"background": "#E15759", "border": "#E15759", "highlight": {"background": "#ffffff", "border": "#E15759"}}, "size": 23.8, "font": {"size": 12, "color": "#ffffff"}, "title": "Biography page (bio.html)", "community": 12, "community_name": "Retrato da bio", "source_file": "bio.html", "file_type": "document", "degree": 6}, {"id": "assets_img_portrait", "label": "Photo: outdoor portrait in camel coat with viola case", "color": {"background": "#E15759", "border": "#E15759", "highlight": {"background": "#ffffff", "border": "#E15759"}}, "size": 14.6, "font": {"size": 12, "color": "#ffffff"}, "title": "Photo: outdoor portrait in camel coat with viola case", "community": 12, "community_name": "Retrato da bio", "source_file": "assets/img/portrait.jpg", "file_type": "image", "degree": 2}, {"id": "agenda_concert_list", "label": "Full concert list with venue, programme and tickets", "color": {"background": "#E15759", "border": "#E15759", "highlight": {"background": "#ffffff", "border": "#E15759"}}, "size": 14.6, "font": {"size": 12, "color": "#ffffff"}, "title": "Full concert list with venue, programme and tickets", "community": 2, "community_name": "Home e agenda", "source_file": "agenda.html", "file_type": "concept", "degree": 2}, {"id": "index_social_links", "label": "Footer social links (Instagram, Spotify, YouTube)", "color": {"background": "#E15759", "border": "#E15759", "highlight": {"background": "#ffffff", "border": "#E15759"}}, "size": 12.3, "font": {"size": 0, "color": "#ffffff"}, "title": "Footer social links (Instagram, Spotify, YouTube)", "community": 2, "community_name": "Home e agenda", "source_file": "index.html", "file_type": "concept", "degree": 1}, {"id": "index_upcoming_concerts", "label": "Upcoming concerts (first 3 rows)", "color": {"background": "#E15759", "border": "#E15759", "highlight": {"background": "#ffffff", "border": "#E15759"}}, "size": 16.9, "font": {"size": 12, "color": "#ffffff"}, "title": "Upcoming concerts (first 3 rows)", "community": 2, "community_name": "Home e agenda", "source_file": "index.html", "file_type": "concept", "degree": 3}, {"id": "agenda_page", "label": "Agenda page (agenda.html)", "color": {"background": "#E15759", "border": "#E15759", "highlight": {"background": "#ffffff", "border": "#E15759"}}, "size": 21.5, "font": {"size": 12, "color": "#ffffff"}, "title": "Agenda page (agenda.html)", "community": 2, "community_name": "Home e agenda", "source_file": "agenda.html", "file_type": "document", "degree": 5}, {"id": "index_page", "label": "Home page (index.html)", "color": {"background": "#E15759", "border": "#E15759", "highlight": {"background": "#ffffff", "border": "#E15759"}}, "size": 37.7, "font": {"size": 12, "color": "#ffffff"}, "title": "Home page (index.html)", "community": 2, "community_name": "Home e agenda", "source_file": "index.html", "file_type": "document", "degree": 12}, {"id": "contact_booking_form", "label": "Booking enquiry form (opens visitor email app via mailto)", "color": {"background": "#76B7B2", "border": "#76B7B2", "highlight": {"background": "#ffffff", "border": "#76B7B2"}}, "size": 19.2, "font": {"size": 12, "color": "#ffffff"}, "title": "Booking enquiry form (opens visitor email app via mailto)", "community": 3, "community_name": "Booking e contato", "source_file": "contact.html", "file_type": "concept", "degree": 4}, {"id": "contact_direct_email", "label": "Direct email natanaelviola@gmail.com", "color": {"background": "#76B7B2", "border": "#76B7B2", "highlight": {"background": "#ffffff", "border": "#76B7B2"}}, "size": 16.9, "font": {"size": 12, "color": "#ffffff"}, "title": "Direct email natanaelviola@gmail.com", "community": 3, "community_name": "Booking e contato", "source_file": "contact.html", "file_type": "concept", "degree": 3}, {"id": "index_booking_block", "label": "Booking block: available for concerts, festivals and residencies worldwide", "color": {"background": "#76B7B2", "border": "#76B7B2", "highlight": {"background": "#ffffff", "border": "#76B7B2"}}, "size": 16.9, "font": {"size": 12, "color": "#ffffff"}, "title": "Booking block: available for concerts, festivals and residencies worldwide", "community": 3, "community_name": "Booking e contato", "source_file": "index.html", "file_type": "concept", "degree": 3}, {"id": "contact_page", "label": "Booking and contact page (contact.html)", "color": {"background": "#76B7B2", "border": "#76B7B2", "highlight": {"background": "#ffffff", "border": "#76B7B2"}}, "size": 30.8, "font": {"size": 12, "color": "#ffffff"}, "title": "Booking and contact page (contact.html)", "community": 3, "community_name": "Booking e contato", "source_file": "contact.html", "file_type": "document", "degree": 9}, {"id": "assets_img_stage_closeup", "label": "Photo: close view playing viola under warm stage light", "color": {"background": "#76B7B2", "border": "#76B7B2", "highlight": {"background": "#ffffff", "border": "#76B7B2"}}, "size": 16.9, "font": {"size": 12, "color": "#ffffff"}, "title": "Photo: close view playing viola under warm stage light", "community": 3, "community_name": "Booking e contato", "source_file": "assets/img/stage-closeup.jpg", "file_type": "image", "degree": 3}, {"id": "bio_collaborators", "label": "Collaborators: Dumay, Hoffman, Braley, Pasquier, Demarquette, Gatto, Coppey, Gringolts, Holliger", "color": {"background": "#59A14F", "border": "#59A14F", "highlight": {"background": "#ffffff", "border": "#59A14F"}}, "size": 12.3, "font": {"size": 0, "color": "#ffffff"}, "title": "Collaborators: Dumay, Hoffman, Braley, Pasquier, Demarquette, Gatto, Coppey, Gringolts, Holliger", "community": 4, "community_name": "Biografia e premios", "source_file": "bio.html", "file_type": "concept", "degree": 1}, {"id": "bio_natanael_ferreira", "label": "Natanael Ferreira (violist, born in Goias, Brazil)", "color": {"background": "#59A14F", "border": "#59A14F", "highlight": {"background": "#ffffff", "border": "#59A14F"}}, "size": 30.8, "font": {"size": 12, "color": "#ffffff"}, "title": "Natanael Ferreira (violist, born in Goias, Brazil)", "community": 4, "community_name": "Biografia e premios", "source_file": "bio.html", "file_type": "concept", "degree": 9}, {"id": "bio_prize_academie_ravel_2015", "label": "Prizes, Academie Ravel 2015", "color": {"background": "#59A14F", "border": "#59A14F", "highlight": {"background": "#ffffff", "border": "#59A14F"}}, "size": 12.3, "font": {"size": 0, "color": "#ffffff"}, "title": "Prizes, Academie Ravel 2015", "community": 4, "community_name": "Biografia e premios", "source_file": "bio.html", "file_type": "concept", "degree": 1}, {"id": "bio_prize_campos_do_jordao_2013", "label": "First prize, Campos do Jordao Winter Festival 2013", "color": {"background": "#59A14F", "border": "#59A14F", "highlight": {"background": "#ffffff", "border": "#59A14F"}}, "size": 12.3, "font": {"size": 0, "color": "#ffffff"}, "title": "First prize, Campos do Jordao Winter Festival 2013", "community": 4, "community_name": "Biografia e premios", "source_file": "bio.html", "file_type": "concept", "degree": 1}, {"id": "bio_prize_rahn_musikpreis_2018", "label": "Third prize, Rahn Musikpreis 2018", "color": {"background": "#59A14F", "border": "#59A14F", "highlight": {"background": "#ffffff", "border": "#59A14F"}}, "size": 12.3, "font": {"size": 0, "color": "#ffffff"}, "title": "Third prize, Rahn Musikpreis 2018", "community": 4, "community_name": "Biografia e premios", "source_file": "bio.html", "file_type": "concept", "degree": 1}, {"id": "docs_proximos_passos_video_hero_dedicado", "label": "Pendencia: video de hero dedicado (vertical e horizontal)", "color": {"background": "#B07AA1", "border": "#B07AA1", "highlight": {"background": "#ffffff", "border": "#B07AA1"}}, "size": 14.6, "font": {"size": 12, "color": "#ffffff"}, "title": "Pendencia: video de hero dedicado (vertical e horizontal)", "community": 6, "community_name": "Hero em video", "source_file": "docs/proximos-passos.md", "file_type": "concept", "degree": 2}, {"id": "index_hero", "label": "Hero: full-bleed video with cascading name", "color": {"background": "#B07AA1", "border": "#B07AA1", "highlight": {"background": "#ffffff", "border": "#B07AA1"}}, "size": 21.5, "font": {"size": 12, "color": "#ffffff"}, "title": "Hero: full-bleed video with cascading name", "community": 6, "community_name": "Hero em video", "source_file": "index.html", "file_type": "concept", "degree": 5}, {"id": "assets_img_hero_desktop", "label": "Hero still, desktop: soloist with string ensemble", "color": {"background": "#B07AA1", "border": "#B07AA1", "highlight": {"background": "#ffffff", "border": "#B07AA1"}}, "size": 12.3, "font": {"size": 0, "color": "#ffffff"}, "title": "Hero still, desktop: soloist with string ensemble", "community": 6, "community_name": "Hero em video", "source_file": "assets/img/hero-desktop.jpg", "file_type": "image", "degree": 1}, {"id": "assets_img_hero_mobile", "label": "Hero still, mobile: recital in wood-panelled hall", "color": {"background": "#B07AA1", "border": "#B07AA1", "highlight": {"background": "#ffffff", "border": "#B07AA1"}}, "size": 12.3, "font": {"size": 0, "color": "#ffffff"}, "title": "Hero still, mobile: recital in wood-panelled hall", "community": 6, "community_name": "Hero em video", "source_file": "assets/img/hero-mobile.jpg", "file_type": "image", "degree": 1}, {"id": "bio_utopia_orchestra", "label": "Utopia Orchestra", "color": {"background": "#FF9DA7", "border": "#FF9DA7", "highlight": {"background": "#ffffff", "border": "#FF9DA7"}}, "size": 14.6, "font": {"size": 12, "color": "#ffffff"}, "title": "Utopia Orchestra", "community": 7, "community_name": "Credenciais", "source_file": "bio.html", "file_type": "concept", "degree": 2}, {"id": "bio_verbier_festival_chamber_orchestra", "label": "Verbier Festival Chamber Orchestra", "color": {"background": "#FF9DA7", "border": "#FF9DA7", "highlight": {"background": "#ffffff", "border": "#FF9DA7"}}, "size": 14.6, "font": {"size": 12, "color": "#ffffff"}, "title": "Verbier Festival Chamber Orchestra", "community": 7, "community_name": "Credenciais", "source_file": "bio.html", "file_type": "concept", "degree": 2}, {"id": "index_credentials", "label": "Credentials list", "color": {"background": "#FF9DA7", "border": "#FF9DA7", "highlight": {"background": "#ffffff", "border": "#FF9DA7"}}, "size": 26.2, "font": {"size": 12, "color": "#ffffff"}, "title": "Credentials list", "community": 7, "community_name": "Credenciais", "source_file": "index.html", "file_type": "concept", "degree": 7}, {"id": "assets_img_orchestra_soloist", "label": "Photo: viola soloist standing in front of an orchestra", "color": {"background": "#FF9DA7", "border": "#FF9DA7", "highlight": {"background": "#ffffff", "border": "#FF9DA7"}}, "size": 14.6, "font": {"size": 12, "color": "#ffffff"}, "title": "Photo: viola soloist standing in front of an orchestra", "community": 7, "community_name": "Credenciais", "source_file": "assets/img/orchestra-soloist.jpg", "file_type": "image", "degree": 2}, {"id": "bio_queen_elisabeth_music_chapel", "label": "Queen Elisabeth Music Chapel (Artist in Residence)", "color": {"background": "#9C755F", "border": "#9C755F", "highlight": {"background": "#ffffff", "border": "#9C755F"}}, "size": 16.9, "font": {"size": 12, "color": "#ffffff"}, "title": "Queen Elisabeth Music Chapel (Artist in Residence)", "community": 8, "community_name": "Residencia Queen Elisabeth", "source_file": "bio.html", "file_type": "concept", "degree": 3}, {"id": "docs_proximos_passos_confirmar_legendas", "label": "Pendencia: confirmar legendas das fotos e videos", "color": {"background": "#9C755F", "border": "#9C755F", "highlight": {"background": "#ffffff", "border": "#9C755F"}}, "size": 16.9, "font": {"size": 12, "color": "#ffffff"}, "title": "Pendencia: confirmar legendas das fotos e videos", "community": 8, "community_name": "Residencia Queen Elisabeth", "source_file": "docs/proximos-passos.md", "file_type": "concept", "degree": 3}, {"id": "assets_img_royal_reception", "label": "Photo: reception in a wood-panelled foyer (caption: Queen of the Belgians)", "color": {"background": "#9C755F", "border": "#9C755F", "highlight": {"background": "#ffffff", "border": "#9C755F"}}, "size": 16.9, "font": {"size": 12, "color": "#ffffff"}, "title": "Photo: reception in a wood-panelled foyer (caption: Queen of the Belgians)", "community": 8, "community_name": "Residencia Queen Elisabeth", "source_file": "assets/img/royal-reception.jpg", "file_type": "image", "degree": 3}, {"id": "bio_gabor_takacs", "label": "Gabor Takacs (chamber music teacher)", "color": {"background": "#BAB0AC", "border": "#BAB0AC", "highlight": {"background": "#ffffff", "border": "#BAB0AC"}}, "size": 12.3, "font": {"size": 0, "color": "#ffffff"}, "title": "Gabor Takacs (chamber music teacher)", "community": 9, "community_name": "Formacao em Genebra", "source_file": "bio.html", "file_type": "concept", "degree": 1}, {"id": "bio_haute_ecole_de_musique_de_geneve", "label": "Haute Ecole de Musique de Geneve", "color": {"background": "#BAB0AC", "border": "#BAB0AC", "highlight": {"background": "#ffffff", "border": "#BAB0AC"}}, "size": 19.2, "font": {"size": 12, "color": "#ffffff"}, "title": "Haute Ecole de Musique de Geneve", "community": 9, "community_name": "Formacao em Genebra", "source_file": "bio.html", "file_type": "concept", "degree": 4}, {"id": "bio_miguel_da_silva", "label": "Miguel da Silva (viola teacher)", "color": {"background": "#BAB0AC", "border": "#BAB0AC", "highlight": {"background": "#ffffff", "border": "#BAB0AC"}}, "size": 12.3, "font": {"size": 0, "color": "#ffffff"}, "title": "Miguel da Silva (viola teacher)", "community": 9, "community_name": "Formacao em Genebra", "source_file": "bio.html", "file_type": "concept", "degree": 1}];
+const RAW_EDGES = [{"from": "js_main_el", "to": "js_main", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "js_main_concerts", "to": "js_main", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "js_main_concerts", "to": "docs_proximos_passos_decisao_painel_administrativo", "label": "rationale_for", "title": "rationale_for [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "js_main_concerts", "to": "docs_proximos_passos_datas_reais", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "js_main_concerts", "to": "docs_proximos_passos_planilha_google", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "js_main_concerts", "to": "agenda_concert_list", "label": "shares_data_with", "title": "shares_data_with [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "js_main_concerts", "to": "index_upcoming_concerts", "label": "shares_data_with", "title": "shares_data_with [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "js_main_cities", "to": "js_main", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "js_main_cities", "to": "docs_proximos_passos_cidades_reais", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "js_main_cities", "to": "index_ticker", "label": "shares_data_with", "title": "shares_data_with [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "js_main", "to": "js_main_ticker", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "js_main", "to": "js_main_head", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "js_main", "to": "js_main_menubtn", "label": "contains", "title": "contains [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "js_main", "to": "agenda_page", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "js_main", "to": "bio_page", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "js_main", "to": "contact_page", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "js_main", "to": "docs_proximos_passos_formspree_web3forms", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "js_main", "to": "index_page", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "js_main", "to": "media_page", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "js_main", "to": "contact_booking_form", "label": "shares_data_with", "title": "shares_data_with [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "docs_proximos_passos_cms_github", "to": "docs_proximos_passos_decisao_painel_administrativo", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "docs_proximos_passos_cms_github", "to": "docs_proximos_passos_github_repo", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "docs_proximos_passos_datas_reais", "to": "docs_proximos_passos_doc", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "docs_proximos_passos_datas_reais", "to": "docs_proximos_passos_decisao_painel_administrativo", "label": "conceptually_related_to", "title": "conceptually_related_to [INFERRED]", "dashes": true, "width": 1, "color": {"opacity": 0.35}, "confidence": "INFERRED"}, {"from": "docs_proximos_passos_dominio_wix", "to": "docs_proximos_passos_doc", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "docs_proximos_passos_dominio_wix", "to": "docs_proximos_passos_vercel_deploy", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "docs_proximos_passos_github_repo", "to": "docs_proximos_passos_doc", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "docs_proximos_passos_github_repo", "to": "docs_proximos_passos_vercel_deploy", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "docs_proximos_passos_painel_proprio", "to": "docs_proximos_passos_decisao_painel_administrativo", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "docs_proximos_passos_painel_proprio", "to": "docs_proximos_passos_vercel_deploy", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "docs_proximos_passos_planilha_google", "to": "docs_proximos_passos_decisao_painel_administrativo", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "docs_proximos_passos_vercel_deploy", "to": "docs_proximos_passos_doc", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "docs_proximos_passos_versoes_pt_fr", "to": "docs_proximos_passos_doc", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "docs_proximos_passos_doc", "to": "docs_proximos_passos_cidades_reais", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "docs_proximos_passos_doc", "to": "docs_proximos_passos_confirmar_legendas", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "docs_proximos_passos_doc", "to": "docs_proximos_passos_decisao_formulario_booking", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "docs_proximos_passos_doc", "to": "docs_proximos_passos_decisao_painel_administrativo", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "docs_proximos_passos_doc", "to": "docs_proximos_passos_fotos_alta_resolucao", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "docs_proximos_passos_doc", "to": "docs_proximos_passos_video_hero_dedicado", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "docs_proximos_passos_fotos_alta_resolucao", "to": "media_photo_gallery", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "index_moments_reel", "to": "assets_img_backstage_conductor", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "index_moments_reel", "to": "assets_img_orchestra_applause", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "index_moments_reel", "to": "assets_img_poster_ensemble", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "index_moments_reel", "to": "assets_img_poster_recital", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "index_moments_reel", "to": "assets_img_stage_closeup", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "index_moments_reel", "to": "assets_img_stage_soloist", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "index_moments_reel", "to": "media_videos_section", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "index_moments_reel", "to": "index_page", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "media_photo_gallery", "to": "media_page", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "media_photo_gallery", "to": "assets_img_backstage_conductor", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "media_photo_gallery", "to": "assets_img_orchestra_applause", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "media_photo_gallery", "to": "assets_img_orchestra_soloist", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "media_photo_gallery", "to": "assets_img_portrait", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "media_photo_gallery", "to": "assets_img_royal_reception", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "media_photo_gallery", "to": "assets_img_stage_closeup", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "media_photo_gallery", "to": "assets_img_stage_soloist", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "media_videos_section", "to": "docs_proximos_passos_confirmar_legendas", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "media_videos_section", "to": "index_hero", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "media_videos_section", "to": "media_page", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "media_videos_section", "to": "assets_img_poster_ensemble", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "media_videos_section", "to": "assets_img_poster_recital", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "media_page", "to": "index_page", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "media_page", "to": "contact_page", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "index_ticker", "to": "index_page", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "docs_proximos_passos_formspree_web3forms", "to": "docs_proximos_passos_decisao_formulario_booking", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "docs_proximos_passos_formspree_web3forms", "to": "docs_proximos_passos_netlify_forms", "label": "semantically_similar_to", "title": "semantically_similar_to [INFERRED]", "dashes": true, "width": 1, "color": {"opacity": 0.35}, "confidence": "INFERRED"}, {"from": "docs_proximos_passos_netlify_forms", "to": "docs_proximos_passos_decisao_formulario_booking", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "docs_proximos_passos_decisao_formulario_booking", "to": "contact_booking_form", "label": "rationale_for", "title": "rationale_for [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "bio_page", "to": "assets_img_portrait", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "bio_page", "to": "bio_natanael_ferreira", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "bio_page", "to": "contact_page", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "bio_page", "to": "index_credentials", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "bio_page", "to": "index_page", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "agenda_concert_list", "to": "agenda_page", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "index_social_links", "to": "index_page", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "index_upcoming_concerts", "to": "index_page", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "index_upcoming_concerts", "to": "agenda_page", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "agenda_page", "to": "contact_page", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "agenda_page", "to": "index_page", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "index_page", "to": "contact_page", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "index_page", "to": "index_booking_block", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "index_page", "to": "index_credentials", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "index_page", "to": "index_hero", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "contact_booking_form", "to": "contact_direct_email", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "contact_booking_form", "to": "contact_page", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "contact_direct_email", "to": "contact_page", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "contact_direct_email", "to": "index_booking_block", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "index_booking_block", "to": "contact_page", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "contact_page", "to": "assets_img_stage_closeup", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "bio_collaborators", "to": "bio_natanael_ferreira", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "bio_natanael_ferreira", "to": "bio_haute_ecole_de_musique_de_geneve", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "bio_natanael_ferreira", "to": "bio_prize_academie_ravel_2015", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "bio_natanael_ferreira", "to": "bio_prize_campos_do_jordao_2013", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "bio_natanael_ferreira", "to": "bio_prize_rahn_musikpreis_2018", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "bio_natanael_ferreira", "to": "bio_queen_elisabeth_music_chapel", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "bio_natanael_ferreira", "to": "bio_utopia_orchestra", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "bio_natanael_ferreira", "to": "bio_verbier_festival_chamber_orchestra", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "docs_proximos_passos_video_hero_dedicado", "to": "index_hero", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "index_hero", "to": "assets_img_hero_desktop", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "index_hero", "to": "assets_img_hero_mobile", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "bio_utopia_orchestra", "to": "index_credentials", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "bio_verbier_festival_chamber_orchestra", "to": "index_credentials", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "index_credentials", "to": "assets_img_orchestra_soloist", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "index_credentials", "to": "bio_haute_ecole_de_musique_de_geneve", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "index_credentials", "to": "bio_queen_elisabeth_music_chapel", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "bio_queen_elisabeth_music_chapel", "to": "assets_img_royal_reception", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "docs_proximos_passos_confirmar_legendas", "to": "assets_img_royal_reception", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "bio_gabor_takacs", "to": "bio_haute_ecole_de_musique_de_geneve", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}, {"from": "bio_haute_ecole_de_musique_de_geneve", "to": "bio_miguel_da_silva", "label": "references", "title": "references [EXTRACTED]", "dashes": false, "width": 2, "color": {"opacity": 0.7}, "confidence": "EXTRACTED"}];
+const LEGEND = [{"cid": 0, "color": "#4E79A7", "label": "Deploy e painel administrativo", "count": 11}, {"cid": 1, "color": "#F28E2B", "label": "Media e Moments on stage", "count": 10}, {"cid": 2, "color": "#E15759", "label": "Home e agenda", "count": 5}, {"cid": 3, "color": "#76B7B2", "label": "Booking e contato", "count": 5}, {"cid": 4, "color": "#59A14F", "label": "Biografia e premios", "count": 5}, {"cid": 5, "color": "#EDC948", "label": "Codigo main.js", "count": 5}, {"cid": 6, "color": "#B07AA1", "label": "Hero em video", "count": 4}, {"cid": 7, "color": "#FF9DA7", "label": "Credenciais", "count": 4}, {"cid": 8, "color": "#9C755F", "label": "Residencia Queen Elisabeth", "count": 3}, {"cid": 9, "color": "#BAB0AC", "label": "Formacao em Genebra", "count": 3}, {"cid": 10, "color": "#4E79A7", "label": "Ticker de cidades", "count": 3}, {"cid": 11, "color": "#F28E2B", "label": "Formulario de booking (decisao)", "count": 3}, {"cid": 12, "color": "#E15759", "label": "Retrato da bio", "count": 2}];
+
+// HTML-escape helper — prevents XSS when injecting graph data into innerHTML
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// Build vis datasets
+const nodesDS = new vis.DataSet(RAW_NODES.map((n, i) => ({
+  id: n.id, label: n.label, color: n.color, size: n.size,
+  font: n.font, title: n.title,
+  // Fermat/golden-angle spiral seed positions (#3699): spreading nodes out
+  // before physics runs keeps avoidOverlap from computing near-zero-distance
+  // repulsion that blows the BarnesHut recursion into a stack overflow on large
+  // graphs. `i` is the map index — physics still settles small graphs identically.
+  x: 30 * Math.sqrt(i) * Math.cos(i * 2.4),
+  y: 30 * Math.sqrt(i) * Math.sin(i * 2.4),
+  _community: n.community, _community_name: n.community_name,
+  _source_file: n.source_file, _file_type: n.file_type, _degree: n.degree,
+})));
+
+const edgesDS = new vis.DataSet(RAW_EDGES.map((e, i) => ({
+  id: i, from: e.from, to: e.to,
+  label: '',
+  title: e.title,
+  dashes: e.dashes,
+  width: e.width,
+  color: e.color,
+  arrows: { to: { enabled: true, scaleFactor: 0.5 } },
+})));
+
+const container = document.getElementById('graph');
+const network = new vis.Network(container, { nodes: nodesDS, edges: edgesDS }, {
+  physics: {
+    enabled: true,
+    solver: 'forceAtlas2Based',
+    forceAtlas2Based: {
+      gravitationalConstant: -60,
+      centralGravity: 0.005,
+      springLength: 120,
+      springConstant: 0.08,
+      damping: 0.4,
+      avoidOverlap: 0.8,
+    },
+    stabilization: { iterations: 200, fit: true },
+  },
+  interaction: {
+    hover: true,
+    tooltipDelay: 100,
+    hideEdgesOnDrag: true,
+    navigationButtons: false,
+    keyboard: false,
+  },
+  nodes: { shape: 'dot', borderWidth: 1.5 },
+  edges: { smooth: { type: 'continuous', roundness: 0.2 }, selectionWidth: 3 },
+});
+
+network.once('stabilizationIterationsDone', () => {
+  network.setOptions({ physics: { enabled: false } });
+});
+
+function showInfo(nodeId) {
+  const n = nodesDS.get(nodeId);
+  if (!n) return;
+  const neighborIds = network.getConnectedNodes(nodeId);
+  const neighborItems = neighborIds.map(nid => {
+    const nb = nodesDS.get(nid);
+    const color = nb ? nb.color.background : '#555';
+    return `<span class="neighbor-link" style="border-left-color:${esc(color)}" data-nid="${esc(nid)}">${esc(nb ? nb.label : nid)}</span>`;
+  }).join('');
+  document.getElementById('info-content').innerHTML = `
+    <div class="field"><b>${esc(n.label)}</b></div>
+    <div class="field">Type: ${esc(n._file_type || 'unknown')}</div>
+    <div class="field">Community: ${esc(n._community_name)}</div>
+    <div class="field">Source: ${esc(n._source_file || '-')}</div>
+    <div class="field">Degree: ${n._degree}</div>
+    ${neighborIds.length ? `<div class="field" style="margin-top:8px;color:#aaa;font-size:11px">Neighbors (${neighborIds.length})</div><div id="neighbors-list">${neighborItems}</div>` : ''}
+  `;
+}
+
+function focusNode(nodeId) {
+  network.focus(nodeId, { scale: 1.4, animation: true });
+  network.selectNodes([nodeId]);
+  showInfo(nodeId);
+}
+
+// Neighbor links use a data attribute + one delegated listener rather than an
+// inline onclick. A node id/label sourced from a document or a scraped URL
+// (graphify add) can contain a double-quote; dropping the stringified id
+// unescaped into a quoted onclick both broke every link and allowed a hostile
+// source to inject an event handler into the local report (stored XSS, #1838).
+// esc() on data-nid keeps the value inside the attribute; the listener reads it
+// back verbatim. Bound to document so it survives the innerHTML rebuild that
+// recreates #neighbors-list on each showInfo().
+document.addEventListener('click', e => {
+  const el = e.target.closest('.neighbor-link');
+  if (el && el.dataset.nid !== undefined) focusNode(el.dataset.nid);
+});
+
+// Track hovered node — hover detection is more reliable than click params
+let hoveredNodeId = null;
+network.on('hoverNode', params => {
+  hoveredNodeId = params.node;
+  container.style.cursor = 'pointer';
+});
+network.on('blurNode', () => {
+  hoveredNodeId = null;
+  container.style.cursor = 'default';
+});
+container.addEventListener('click', () => {
+  if (hoveredNodeId !== null) {
+    showInfo(hoveredNodeId);
+    network.selectNodes([hoveredNodeId]);
+  }
+});
+network.on('click', params => {
+  if (params.nodes.length > 0) {
+    showInfo(params.nodes[0]);
+  } else if (hoveredNodeId === null) {
+    document.getElementById('info-content').innerHTML = '<span class="empty">Click a node to inspect it</span>';
+  }
+});
+
+const searchInput = document.getElementById('search');
+const searchResults = document.getElementById('search-results');
+searchInput.addEventListener('input', () => {
+  const q = searchInput.value.toLowerCase().trim();
+  searchResults.innerHTML = '';
+  if (!q) { searchResults.style.display = 'none'; return; }
+  const matches = RAW_NODES.filter(n => n.label.toLowerCase().includes(q)).slice(0, 20);
+  if (!matches.length) { searchResults.style.display = 'none'; return; }
+  searchResults.style.display = 'block';
+  matches.forEach(n => {
+    const el = document.createElement('div');
+    el.className = 'search-item';
+    el.textContent = n.label;
+    el.style.borderLeft = `3px solid ${n.color.background}`;
+    el.style.paddingLeft = '8px';
+    el.onclick = () => {
+      network.focus(n.id, { scale: 1.5, animation: true });
+      network.selectNodes([n.id]);
+      showInfo(n.id);
+      searchResults.style.display = 'none';
+      searchInput.value = '';
+    };
+    searchResults.appendChild(el);
+  });
+});
+document.addEventListener('click', e => {
+  if (!searchResults.contains(e.target) && e.target !== searchInput)
+    searchResults.style.display = 'none';
+});
+
+const hiddenCommunities = new Set();
+
+const selectAllCb = document.getElementById('select-all-cb');
+
+function updateSelectAllState() {
+  const total = LEGEND.length;
+  const hidden = hiddenCommunities.size;
+  selectAllCb.checked = hidden === 0;
+  selectAllCb.indeterminate = hidden > 0 && hidden < total;
+}
+
+function toggleAllCommunities(hide) {
+  document.querySelectorAll('.legend-item').forEach(item => {
+    hide ? item.classList.add('dimmed') : item.classList.remove('dimmed');
+  });
+  document.querySelectorAll('.legend-cb').forEach(cb => {
+    cb.checked = !hide;
+  });
+  LEGEND.forEach(c => {
+    if (hide) hiddenCommunities.add(c.cid); else hiddenCommunities.delete(c.cid);
+  });
+  const updates = RAW_NODES.map(n => ({ id: n.id, hidden: hide }));
+  nodesDS.update(updates);
+  updateSelectAllState();
+}
+
+const legendEl = document.getElementById('legend');
+LEGEND.forEach(c => {
+  const item = document.createElement('div');
+  item.className = 'legend-item';
+  const cb = document.createElement('input');
+  cb.type = 'checkbox';
+  cb.className = 'legend-cb';
+  cb.checked = true;
+  cb.addEventListener('change', (e) => {
+    e.stopPropagation();
+    if (cb.checked) {
+      hiddenCommunities.delete(c.cid);
+      item.classList.remove('dimmed');
+    } else {
+      hiddenCommunities.add(c.cid);
+      item.classList.add('dimmed');
+    }
+    const updates = RAW_NODES
+      .filter(n => n.community === c.cid)
+      .map(n => ({ id: n.id, hidden: !cb.checked }));
+    nodesDS.update(updates);
+    updateSelectAllState();
+  });
+  item.innerHTML = `<div class="legend-dot" style="background:${c.color}"></div>
+    <span class="legend-label">${c.label}</span>
+    <span class="legend-count">${c.count}</span>`;
+  item.prepend(cb);
+  item.onclick = (e) => {
+    if (e.target === cb) return;
+    cb.checked = !cb.checked;
+    cb.dispatchEvent(new Event('change'));
+  };
+  legendEl.appendChild(item);
+});
+</script>
+<script>
+// Render hyperedges as shaded regions
+const hyperedges = [{"id": "admin_panel_options", "label": "Opcoes de painel administrativo", "nodes": ["docs_proximos_passos_planilha_google", "docs_proximos_passos_cms_github", "docs_proximos_passos_painel_proprio"], "relation": "participate_in", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "docs/proximos-passos.md"}];
+// afterDrawing passes ctx already transformed to network coordinate space.
+// Draw node positions raw — no manual pan/zoom/DPR math needed.
+
+// Andrew's monotone chain. Returns the hull in counter-clockwise order, which
+// is what the perimeter must be traced in. Collinear and duplicate points
+// collapse to the extremes, so degenerate member sets render as a segment
+// rather than a zero-area crossed path.
+function convexHull(pts) {
+    const p = pts.slice().sort((a, b) => (a.x - b.x) || (a.y - b.y));
+    if (p.length < 3) return p;
+    const cross = (o, a, b) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+    const build = seq => {
+        const out = [];
+        for (const q of seq) {
+            while (out.length >= 2 && cross(out[out.length - 2], out[out.length - 1], q) <= 0) out.pop();
+            out.push(q);
+        }
+        out.pop();
+        return out;
+    };
+    const hull = build(p).concat(build(p.slice().reverse()));
+    return hull.length >= 3 ? hull : p;
+}
+network.on('afterDrawing', function(ctx) {
+    hyperedges.forEach(h => {
+        const positions = h.nodes
+            .map(nid => network.getPositions([nid])[nid])
+            .filter(p => p !== undefined);
+        if (positions.length < 2) return;
+        ctx.save();
+        ctx.globalAlpha = 0.12;
+        ctx.fillStyle = '#6366f1';
+        ctx.strokeStyle = '#6366f1';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        // Centroid and expanded hull in network coordinates.
+        // The perimeter must follow hull order, not h.nodes order: tracing the
+        // raw member order self-intersects whenever the layout does not happen
+        // to place members in angular order, filling as crossed wedges.
+        const cx = positions.reduce((s, p) => s + p.x, 0) / positions.length;
+        const cy = positions.reduce((s, p) => s + p.y, 0) / positions.length;
+        const hull = convexHull(positions);
+        const expanded = hull.map(p => ({
+            x: cx + (p.x - cx) * 1.15,
+            y: cy + (p.y - cy) * 1.15
+        }));
+        ctx.moveTo(expanded[0].x, expanded[0].y);
+        expanded.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
+        ctx.closePath();
+        ctx.fill();
+        ctx.globalAlpha = 0.4;
+        ctx.stroke();
+        // Label
+        ctx.globalAlpha = 0.8;
+        ctx.fillStyle = '#4f46e5';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(h.label, cx, cy - 5);
+        ctx.restore();
+    });
+});
+</script>
+</body>
+</html>

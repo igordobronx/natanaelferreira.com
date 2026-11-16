@@ -1,0 +1,134 @@
+{
+  "js/main.js": {
+    "mtime": 1794624509.9400322,
+    "seen": 1794660198.4289303,
+    "ast_hash": "c612167eec303924683e69d86b7b9cb8",
+    "semantic_hash": "c612167eec303924683e69d86b7b9cb8"
+  },
+  "agenda.html": {
+    "mtime": 1794624571.8265238,
+    "seen": 1794660198.4289303,
+    "ast_hash": "2f80c09c90cb5ca48ae42a8c11febfe1",
+    "semantic_hash": "2f80c09c90cb5ca48ae42a8c11febfe1"
+  },
+  "bio.html": {
+    "mtime": 1794624697.40733,
+    "seen": 1794660198.4289303,
+    "ast_hash": "1ff588c594714694724c534d41aea932",
+    "semantic_hash": "1ff588c594714694724c534d41aea932"
+  },
+  "contact.html": {
+    "mtime": 1794624572.0288296,
+    "seen": 1794660198.4289303,
+    "ast_hash": "a3f4dc93de3a0e6f9f08945bd2aa1fc0",
+    "semantic_hash": "a3f4dc93de3a0e6f9f08945bd2aa1fc0"
+  },
+  "docs/proximos-passos.md": {
+    "mtime": 1794660031.781889,
+    "seen": 1794660198.4289303,
+    "ast_hash": "5d18c5d93f6af826279ac644966db1ef",
+    "semantic_hash": "5d18c5d93f6af826279ac644966db1ef"
+  },
+  "index.html": {
+    "mtime": 1794624642.4857776,
+    "seen": 1794660198.4289303,
+    "ast_hash": "527f3bdb4f7f00211331f47015a8ce9b",
+    "semantic_hash": "527f3bdb4f7f00211331f47015a8ce9b"
+  },
+  "media.html": {
+    "mtime": 1794624571.885651,
+    "seen": 1794660198.4289303,
+    "ast_hash": "865c86286436705c7e914c1291009200",
+    "semantic_hash": "865c86286436705c7e914c1291009200"
+  },
+  "assets/img/backstage-conductor.jpg": {
+    "mtime": 1794623977.2970822,
+    "seen": 1794660198.4289303,
+    "ast_hash": "4ad1b7afc7616a561d06b58fd27b25a5",
+    "semantic_hash": "4ad1b7afc7616a561d06b58fd27b25a5"
+  },
+  "assets/img/hero-desktop.jpg": {
+    "mtime": 1794624646.1272898,
+    "seen": 1794660198.4289303,
+    "ast_hash": "fed7660bd9b0a01f8a1fbbdbff5899e2",
+    "semantic_hash": "fed7660bd9b0a01f8a1fbbdbff5899e2"
+  },
+  "assets/img/hero-mobile.jpg": {
+    "mtime": 1794624362.6957576,
+    "seen": 1794660198.4289303,
+    "ast_hash": "47de91efc76800e5d95663dd8ea5cb64",
+    "semantic_hash": "47de91efc76800e5d95663dd8ea5cb64"
+  },
+  "assets/img/orchestra-applause.jpg": {
+    "mtime": 1794623977.2673664,
+    "seen": 1794660198.4289303,
+    "ast_hash": "71e768a676db52fa5b089c324db1357c",
+    "semantic_hash": "71e768a676db52fa5b089c324db1357c"
+  },
+  "assets/img/orchestra-soloist.jpg": {
+    "mtime": 1794623977.3061266,
+    "seen": 1794660198.4289303,
+    "ast_hash": "2cfef499c70bfeb750ec7f961f7c48d2",
+    "semantic_hash": "2cfef499c70bfeb750ec7f961f7c48d2"
+  },
+  "assets/img/portrait.jpg": {
+    "mtime": 1794623977.2806618,
+    "seen": 1794660198.4289303,
+    "ast_hash": "76fda94585baf3d95a5b2893dcb78d9d",
+    "semantic_hash": "76fda94585baf3d95a5b2893dcb78d9d"
+  },
+  "assets/img/poster-ensemble.jpg": {
+    "mtime": 1794624362.7930264,
+    "seen": 1794660198.4289303,
+    "ast_hash": "c67f0412ee62ee701924878ef93c3992",
+    "semantic_hash": "c67f0412ee62ee701924878ef93c3992"
+  },
+  "assets/img/poster-recital.jpg": {
+    "mtime": 1794624362.6135223,
+    "seen": 1794660198.4289303,
+    "ast_hash": "7a03f59d9622694fe597e74050d4f2d9",
+    "semantic_hash": "7a03f59d9622694fe597e74050d4f2d9"
+  },
+  "assets/img/royal-reception.jpg": {
+    "mtime": 1794623977.328276,
+    "seen": 1794660198.4289303,
+    "ast_hash": "a91049deacfe7fb763454cffe7e4ce32",
+    "semantic_hash": "a91049deacfe7fb763454cffe7e4ce32"
+  },
+  "assets/img/stage-closeup.jpg": {
+    "mtime": 1794623977.2558568,
+    "seen": 1794660198.4289303,
+    "ast_hash": "25fb390b9a689009672cac3a4560bd10",
+    "semantic_hash": "25fb390b9a689009672cac3a4560bd10"
+  },
+  "assets/img/stage-soloist.jpg": {
+    "mtime": 1794623977.3146818,
+    "seen": 1794660198.4289303,
+    "ast_hash": "ee34b6ba8aeb610afe061e8cf67c72be",
+    "semantic_hash": "ee34b6ba8aeb610afe061e8cf67c72be"
+  },
+  "assets/video/ensemble.mp4": {
+    "mtime": 1794624578.9646192,
+    "seen": 1794660198.4289303,
+    "ast_hash": "2423f71cec72f2b220cec753a4c4e45a",
+    "semantic_hash": "2423f71cec72f2b220cec753a4c4e45a"
+  },
+  "assets/video/hero-desktop.mp4": {
+    "mtime": 1794624646.0043058,
+    "seen": 1794660198.4289303,
+    "ast_hash": "2e4f89d4e3e3302c971ef65c380d18e8",
+    "semantic_hash": "2e4f89d4e3e3302c971ef65c380d18e8"
+  },
+  "assets/video/hero-mobile.mp4": {
+    "mtime": 1794624359.9413643,
+    "seen": 1794660198.4289303,
+    "ast_hash": "0161eea4df06349cb454f2f9731e8177",
+    "semantic_hash": "0161eea4df06349cb454f2f9731e8177"
+  },
+  "assets/video/recital.mp4": {
+    "mtime": 1794624579.1021183,
+    "seen": 1794660198.4289303,
+    "ast_hash": "fcba3cadca0c1002543ac75a765201b5",
+    "semantic_hash": "fcba3cadca0c1002543ac75a765201b5"
+  }
+}
